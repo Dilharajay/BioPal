@@ -3,6 +3,7 @@
 #include "../../include/types.h"
 #include "../../include/rtos_handles.h"
 #include "../config_store.h"
+#include "../logger.h"
 
 #include <Wire.h>
 #include <ClosedCube_MAX30205.h>
@@ -40,24 +41,25 @@ static bool initSensor() {
     // Check if device is on bus
     Wire.beginTransmission(ADDR_MAX30205);
     if (Wire.endTransmission() != 0) {
-        Serial.println("[TEMP] ERROR: MAX30205 not found on I2C bus.");
+        Logger::error("TEMP", "MAX30205 not found on I2C bus.");
         return false;
     }
     tempSensor.begin(ADDR_MAX30205);
-    Serial.println("[TEMP] MAX30205 initialised (continuous mode).");
+    // MAX30205 resets into Continuous Mode by default.
+    Logger::info("TEMP", "MAX30205 initialised (continuous mode).");
     return true;
 }
 
 // ──────────────────────────────────────────────────────────────────
 void vBodyTempTask(void *pvParameters) {
-    Serial.printf("[TEMP] Task started on Core %d\n", xPortGetCoreID());
+    Logger::info("TEMP", "Task started on Core %d", xPortGetCoreID());
 
     if (xSemaphoreTake(xI2CMutex, pdMS_TO_TICKS(2000)) == pdTRUE) {
         sensorOK = initSensor();
         xSemaphoreGive(xI2CMutex);
     }
     if (!sensorOK) {
-        Serial.println("[TEMP] Task terminating — sensor not found.");
+        Logger::error("TEMP", "Task terminating — sensor not found.");
         vTaskDelete(NULL);
         return;
     }
@@ -118,7 +120,7 @@ void vBodyTempTask(void *pvParameters) {
                 tempData.bodyTempF     = rawTemp * 9.0f / 5.0f + 32.0f;
                 tempData.bodyTempValid = true;
             } else {
-                Serial.printf("[TEMP] WARN: reading %.2f C out of range.\n", rawTemp);
+                Logger::warn("TEMP", "reading %.2f C out of range.", rawTemp);
                 tempData.bodyTempValid = false;
             }
 
@@ -142,10 +144,8 @@ void vBodyTempTask(void *pvParameters) {
                 xQueueSend(xAPIQueue, &tempData, pdMS_TO_TICKS(20));
 
                 if (tempData.bodyTempValid) {
-                    if (serialLoggingEnabled) {
-                        Serial.printf("[TEMP] %.2f C (%.2f F)\n",
-                                      tempData.bodyTempC, tempData.bodyTempF);
-                    }
+                    Logger::debug("TEMP", "%.2f C (%.2f F)",
+                                  tempData.bodyTempC, tempData.bodyTempF);
                 }
             }
 

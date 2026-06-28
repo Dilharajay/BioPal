@@ -1,6 +1,7 @@
 #include "task_ota.h"
 #include "../../include/config.h"
 #include "../../include/rtos_handles.h"
+#include "../logger.h"
 
 #include <WiFi.h>
 #include <ArduinoOTA.h>
@@ -29,15 +30,14 @@
 // ================================================================
 
 void vOTATask(void *pvParameters) {
-    Serial.printf("[OTA] Task started on Core %d\n", xPortGetCoreID());
+    Logger::info("OTA", "Task started on Core %d", xPortGetCoreID());
 
     // Wait for WiFi before setting up OTA — ArduinoOTA.begin() needs a valid IP
-    Serial.print("[OTA] Waiting for WiFi...");
+    Logger::info("OTA", "Waiting for WiFi...");
     while (WiFi.status() != WL_CONNECTED) {
         vTaskDelay(pdMS_TO_TICKS(500));
-        Serial.print(".");
     }
-    Serial.println(" connected.");
+    Logger::info("OTA", "Connected to WiFi.");
 
     // ── Configure OTA ─────────────────────────────────────────────
     // Hostname appears in mDNS as "health-monitor.local" on your network.
@@ -51,11 +51,11 @@ void vOTATask(void *pvParameters) {
     // Keep them brief — they execute in a high-priority context.
     ArduinoOTA.onStart([]() {
         String type = (ArduinoOTA.getCommand() == U_FLASH) ? "firmware" : "filesystem";
-        Serial.println("[OTA] Update started: " + type);
+        Logger::info("OTA", "Update started: %s", type.c_str());
     });
 
     ArduinoOTA.onEnd([]() {
-        Serial.println("\n[OTA] Update complete. Rebooting...");
+        Logger::info("OTA", "Update complete. Rebooting...");
     });
 
     ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
@@ -63,21 +63,21 @@ void vOTATask(void *pvParameters) {
         static uint8_t lastPct = 0;
         uint8_t pct = (progress * 100) / total;
         if (pct / 10 != lastPct / 10) {
-            Serial.printf("[OTA] Progress: %u%%\n", pct);
+            Logger::info("OTA", "Progress: %u%%", pct);
             lastPct = pct;
         }
     });
 
     ArduinoOTA.onError([](ota_error_t error) {
-        Serial.printf("[OTA] ERROR[%u]: ", error);
+        const char* errStr = "Unknown";
         switch (error) {
-            case OTA_AUTH_ERROR:    Serial.println("Auth failed");    break;
-            case OTA_BEGIN_ERROR:   Serial.println("Begin failed");   break;
-            case OTA_CONNECT_ERROR: Serial.println("Connect failed"); break;
-            case OTA_RECEIVE_ERROR: Serial.println("Receive failed"); break;
-            case OTA_END_ERROR:     Serial.println("End failed");     break;
-            default:                Serial.println("Unknown");        break;
+            case OTA_AUTH_ERROR:    errStr = "Auth failed";    break;
+            case OTA_BEGIN_ERROR:   errStr = "Begin failed";   break;
+            case OTA_CONNECT_ERROR: errStr = "Connect failed"; break;
+            case OTA_RECEIVE_ERROR: errStr = "Receive failed"; break;
+            case OTA_END_ERROR:     errStr = "End failed";     break;
         }
+        Logger::error("OTA", "ERROR[%u]: %s", error, errStr);
     });
 
     // ── Start the OTA service ──────────────────────────────────────
@@ -85,7 +85,7 @@ void vOTATask(void *pvParameters) {
     // UDP port that the ArduinoOTA protocol uses.
     ArduinoOTA.begin();
 
-    Serial.printf("[OTA] Ready. Device: %s.local\n", OTA_HOSTNAME);
+    Logger::info("OTA", "Ready. Device: %s.local", OTA_HOSTNAME);
 
     // ── Poll loop ─────────────────────────────────────────────────
     // handle() returns immediately if no OTA request is in progress.

@@ -3,6 +3,7 @@
 #include "../../include/types.h"
 #include "../../include/rtos_handles.h"
 #include "../config_store.h"
+#include "../logger.h"
 
 #include <Wire.h>
 #include <RTClib.h>
@@ -33,28 +34,28 @@ static bool       rtcOK = false;
 // ──────────────────────────────────────────────────────────────────
 static bool initRTC() {
     if (!rtc.begin(&Wire)) {
-        Serial.println("[RTC] ERROR: DS1307 not found on I2C bus.");
+        Logger::error("RTC", "DS1307 not found on I2C bus.");
         return false;
     }
     // DS1307 uses isrunning() instead of lostPower()
     if (!rtc.isrunning()) {
-        Serial.println("[RTC] WARN: RTC is NOT running. Setting to compile time.");
+        Logger::warn("RTC", "RTC is NOT running. Setting to compile time.");
         rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
     }
-    Serial.println("[RTC] DS1307 initialised.");
+    Logger::info("RTC", "DS1307 initialised.");
     return true;
 }
 
 // ──────────────────────────────────────────────────────────────────
 void vRTCTask(void *pvParameters) {
-    Serial.printf("[RTC] Task started on Core %d\n", xPortGetCoreID());
+    Logger::info("RTC", "Task started on Core %d", xPortGetCoreID());
 
     if (xSemaphoreTake(xI2CMutex, pdMS_TO_TICKS(2000)) == pdTRUE) {
         rtcOK = initRTC();
         xSemaphoreGive(xI2CMutex);
     }
     if (!rtcOK) {
-        Serial.println("[RTC] Task terminating — RTC not found.");
+        Logger::error("RTC", "Task terminating — RTC not found.");
         vTaskDelete(NULL);
         return;
     }
@@ -113,9 +114,7 @@ void vRTCTask(void *pvParameters) {
         xQueueOverwrite(xDisplayQueue, &rtcData);
         xQueueSend(xAPIQueue, &rtcData, pdMS_TO_TICKS(10));
 
-        if (serialLoggingEnabled) {
-            Serial.printf("[RTC] %s %s\n", rtcData.dateStr, rtcData.timeStr);
-        }
+        Logger::debug("RTC", "%s %s", rtcData.dateStr, rtcData.timeStr);
 
         vTaskDelayUntil(&xLastWake, xPeriod);
     }
@@ -125,8 +124,8 @@ void setRTCTime(uint16_t year, uint8_t month, uint8_t day, uint8_t hour, uint8_t
     if (xSemaphoreTake(xI2CMutex, pdMS_TO_TICKS(1000)) == pdTRUE) {
         rtc.adjust(DateTime(year, month, day, hour, min, sec));
         xSemaphoreGive(xI2CMutex);
-        Serial.println("[RTC] Time updated successfully via CLI.");
+        Logger::info("RTC", "Time updated successfully via CLI.");
     } else {
-        Serial.println("[RTC] ERROR: Could not acquire I2C mutex to set time.");
+        Logger::error("RTC", "Could not acquire I2C mutex to set time.");
     }
 }

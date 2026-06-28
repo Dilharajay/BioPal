@@ -2,6 +2,7 @@
 #include "../../include/config.h"
 #include "../../include/types.h"
 #include "../../include/rtos_handles.h"
+#include "../logger.h"
 
 #include <Wire.h>
 #include <Adafruit_SSD1306.h>
@@ -34,12 +35,12 @@ static bool initDisplay() {
     vTaskDelay(pdMS_TO_TICKS(100));
 
     if (!oled.begin(SSD1306_SWITCHCAPVCC, ADDR_SSD1306)) {
-        Serial.printf("[DISP] ERROR: SSD1306 not found at 0x%02X. Trying 0x3D...\n", ADDR_SSD1306);
+        Logger::warn("DISP", "SSD1306 not found at 0x%02X. Trying 0x3D...", ADDR_SSD1306);
         if (!oled.begin(SSD1306_SWITCHCAPVCC, 0x3D)) {
-            Serial.println("[DISP] ERROR: SSD1306 not found at 0x3D either.");
+            Logger::error("DISP", "SSD1306 not found at 0x3D either.");
             return false;
         }
-        Serial.println("[DISP] SSD1306 found at 0x3D instead.");
+        Logger::info("DISP", "SSD1306 found at 0x3D instead.");
     }
     
     oled.clearDisplay();
@@ -49,7 +50,7 @@ static bool initDisplay() {
     oled.println("  Health Monitor");
     oled.println("   Initialising...");
     oled.display();
-    Serial.println("[DISP] SSD1306 initialised.");
+    Logger::info("DISP", "SSD1306 initialised.");
     return true;
 }
 
@@ -190,14 +191,14 @@ static void drawPageClock(const VitalData_t &d) {
 
 // ──────────────────────────────────────────────────────────────────
 void vDisplayTask(void *pvParameters) {
-    Serial.printf("[DISP] Task started on Core %d\n", xPortGetCoreID());
+    Logger::info("DISP", "Task started on Core %d", xPortGetCoreID());
 
     if (xSemaphoreTake(xI2CMutex, pdMS_TO_TICKS(2000)) == pdTRUE) {
         oledOK = initDisplay();
         xSemaphoreGive(xI2CMutex);
     }
     if (!oledOK) {
-        Serial.println("[DISP] Task terminating — OLED not found.");
+        Logger::error("DISP", "Task terminating — OLED not found.");
         vTaskDelete(NULL);
         return;
     }

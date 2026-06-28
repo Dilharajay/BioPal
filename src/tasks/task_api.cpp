@@ -3,6 +3,7 @@
 #include "../../include/types.h"
 #include "../../include/rtos_handles.h"
 #include "../config_store.h"
+#include "../logger.h"
 
 #include <WiFi.h>
 #include <HTTPClient.h>
@@ -23,18 +24,18 @@ static uint32_t totalSent = 0;
 static bool ensureWiFi() {
     if (WiFi.status() == WL_CONNECTED) return true;
 
-    Serial.println("[API] WiFi lost. Reconnecting...");
-    WiFi.reconnect();
-
-    for (uint8_t i = 0; i < 20; i++) {          // 20 × 500 ms = 10 s timeout
+    Logger::warn("API", "WiFi lost. Reconnecting...");
+    uint32_t start = millis();
+    WiFi.disconnect();
+    WiFi.begin(current_wifi_ssid.c_str(), current_wifi_pass.c_str());
+    while (millis() - start < WIFI_TIMEOUT_MS) {
         if (WiFi.status() == WL_CONNECTED) {
-            Serial.printf("[API] Reconnected. IP: %s\n",
-                          WiFi.localIP().toString().c_str());
+            Logger::info("API", "Reconnected. IP: %s", WiFi.localIP().toString().c_str());
             return true;
         }
         vTaskDelay(pdMS_TO_TICKS(500));
     }
-    Serial.println("[API] Reconnect failed.");
+    Logger::error("API", "Reconnect failed.");
     return false;
 }
 
@@ -78,7 +79,7 @@ static void buildJSON(const VitalData_t &d, String &out) {
 
 // ──────────────────────────────────────────────────────────────────
 void vAPITask(void *pvParameters) {
-    Serial.printf("[API] Task started on Core %d\n", xPortGetCoreID());
+    Logger::info("API", "Task started on Core %d", xPortGetCoreID());
 
     VitalData_t data = {};
 
@@ -92,7 +93,7 @@ void vAPITask(void *pvParameters) {
 
         // ── WiFi check / reconnect ────────────────────────────────
         if (!ensureWiFi()) {
-            Serial.println("[API] Skipping send — no WiFi.");
+            Logger::warn("API", "Skipping send — no WiFi.");
             continue;
         }
 
@@ -114,23 +115,19 @@ void vAPITask(void *pvParameters) {
 
         if (code > 0) {
             totalSent++;
-            if (serialLoggingEnabled) {
-                Serial.printf("[API] POST #%u → HTTP %d | HR:%.0f SpO2:%.0f T:%.1fC\n",
-                              totalSent, code,
-                              data.heartRate, data.spO2, data.bodyTempC);
-            }
+            Logger::debug("API", "POST #%u → HTTP %d | HR:%.0f SpO2:%.0f T:%.1fC",
+                          totalSent, code,
+                          data.heartRate, data.spO2, data.bodyTempC);
             if (code >= 400) {
                 // Server responded with an error — log first 120 chars of body
                 String body = http.getString();
-                if (serialLoggingEnabled) {
-                    Serial.printf("[API] Server error body: %s\n",
-                                  body.substring(0, 120).c_str());
-                }
+                Logger::warn("API", "Server error body: %s",
+                             body.substring(0, 120).c_str());
             }
         } else {
             // Negative code = transport failure (DNS, TCP timeout, etc.)
-            Serial.printf("[API] Connection failed: %s\n",
-                          HTTPClient::errorToString(code).c_str());
+            Logger::error("API", "Connection failed: %s",
+                          http.errorToString(code).c_str());
         }
 
         http.end();  // MUST be called to close socket and free buffers

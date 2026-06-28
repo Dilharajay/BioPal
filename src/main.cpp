@@ -6,6 +6,7 @@
 #include "../include/types.h"
 #include "../include/rtos_handles.h"
 #include "config_store.h"
+#include "logger.h"
 
 #include "tasks/task_heart_rate.h"
 #include "tasks/task_body_temp.h"
@@ -44,7 +45,7 @@ extern "C" void IRAM_ATTR vApplicationStackOverflowHook(
 
 // ──────────────────────────────────────────────────────────────────
 static void connectWiFi() {
-    Serial.printf("[WiFi] Connecting to \"%s\"", current_wifi_ssid.c_str());
+    Logger::info("WIFI", "Connecting to \"%s\"", current_wifi_ssid.c_str());
     WiFi.mode(WIFI_STA);
     WiFi.begin(current_wifi_ssid.c_str(), current_wifi_pass.c_str());
 
@@ -58,8 +59,8 @@ static void connectWiFi() {
         vTaskDelay(pdMS_TO_TICKS(500));
         Serial.print(".");
     }
-    Serial.printf("\n[WiFi] Connected. IP: %s  RSSI: %d dBm\n",
-                  WiFi.localIP().toString().c_str(), WiFi.RSSI());
+    Logger::info("WIFI", "Connected! IP: %s", WiFi.localIP().toString().c_str());
+    addLog("WiFi Connected");
 }
 
 // ──────────────────────────────────────────────────────────────────
@@ -108,7 +109,9 @@ void setup() {
 
     // Load configuration from NVS
     loadConfig();
+    Logger::setLevel(debugModeEnabled ? LOG_LEVEL_DEBUG : LOG_LEVEL_INFO);
     addLog("System Booted");
+    Logger::info("SYS", "ESP32 System Booted");
 
     // ── Step 1: I2C bus init ─────────────────────────────────────
     // Wire.begin() configures the hardware I2C peripheral.
@@ -240,12 +243,41 @@ void processCLI(const String& cmd) {
         Serial.println("API Endpt: " + current_api_endpoint);
         Serial.println("API Token: " + current_api_token);
         Serial.println("----------------------");
-    } else if (cmd == "start") {
-        serialLoggingEnabled = true;
-        Serial.println("Live logging started. Type 'stop' to pause.");
-    } else if (cmd == "stop") {
-        serialLoggingEnabled = false;
-        Serial.println("Live logging stopped.");
+    } else if (cmd == "read") {
+        VitalData_t currentData;
+        if (xQueuePeek(xDisplayQueue, &currentData, 0) == pdTRUE) {
+            Serial.println("--- Current Sensor Readings ---");
+            if (currentData.rtcValid) {
+                Serial.printf("Time  : %s %s\n", currentData.dateStr, currentData.timeStr);
+            } else {
+                Serial.println("Time  : RTC Unavailable");
+            }
+            if (currentData.hrValid) {
+                Serial.printf("HR    : %.0f BPM\n", currentData.heartRate);
+                Serial.printf("SpO2  : %.0f %%\n", currentData.spO2);
+            } else {
+                Serial.println("HR    : Calculating/Unavailable");
+            }
+            if (currentData.bodyTempValid) {
+                Serial.printf("Temp  : %.2f °C\n", currentData.bodyTempC);
+            } else {
+                Serial.println("Temp  : Unavailable");
+            }
+            Serial.printf("Motion: Mag %.2f m/s² (Fall? %s)\n", currentData.accelMag, currentData.fallDetected ? "YES" : "NO");
+            Serial.println("-------------------------------");
+        } else {
+            Serial.println("Error: No sensor data available yet.");
+        }
+    } else if (cmd == "start" || cmd == "debug on") {
+        debugModeEnabled = true;
+        saveConfig("", "", "", "");
+        Logger::setLevel(LOG_LEVEL_DEBUG);
+        Serial.println("Debug mode ON (live logging enabled).");
+    } else if (cmd == "stop" || cmd == "debug off") {
+        debugModeEnabled = false;
+        saveConfig("", "", "", "");
+        Logger::setLevel(LOG_LEVEL_INFO);
+        Serial.println("Debug mode OFF (live logging paused).");
     } else if (cmd == "status") {
         printStatus();
     } else if (cmd == "logs") {
@@ -255,8 +287,9 @@ void processCLI(const String& cmd) {
         esp_restart();
     } else {
         Serial.println("Unknown command. Available:");
-        Serial.println("  start");
-        Serial.println("  stop");
+        Serial.println("  read");
+        Serial.println("  start / debug on");
+        Serial.println("  stop / debug off");
         Serial.println("  set wifi <ssid> <password>");
         Serial.println("  set api <url> <token>");
         Serial.println("  set time <YYYY-MM-DD> <HH:MM:SS>");
@@ -282,7 +315,7 @@ void loop() {
 
     if (millis() - lastHealthReport > 10000) {
         lastHealthReport = millis();
-        if (serialLoggingEnabled) {
+        if (debugModeEnabled) {
             printStatus();
         }
     }

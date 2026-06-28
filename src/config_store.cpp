@@ -5,7 +5,7 @@ String current_wifi_ssid = "";
 String current_wifi_pass = "";
 String current_api_endpoint = "";
 String current_api_token = "";
-bool serialLoggingEnabled = false;
+bool debugModeEnabled = false;
 
 static Preferences preferences;
 
@@ -15,6 +15,7 @@ void loadConfig() {
     current_wifi_pass = preferences.getString("wifi_pass", "HJBT5JD1NY0");
     current_api_endpoint = preferences.getString("api_ep", "http://192.168.1.100:3000/api/vitals");
     current_api_token = preferences.getString("api_token", "Bearer your-token-here");
+    debugModeEnabled = preferences.getBool("debug_mode", false);
     preferences.end();
 }
 
@@ -37,6 +38,8 @@ void saveConfig(const String& ssid, const String& pass, const String& api_ep, co
         preferences.putString("api_token", api_token);
         current_api_token = api_token;
     }
+    
+    preferences.putBool("debug_mode", debugModeEnabled);
     
     preferences.end();
 }

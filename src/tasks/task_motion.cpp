@@ -3,6 +3,7 @@
 #include "../../include/types.h"
 #include "../../include/rtos_handles.h"
 #include "../config_store.h"
+#include "../logger.h"
 
 #include <Wire.h>
 #include <Adafruit_MPU6050.h>
@@ -35,7 +36,7 @@ static bool imuOK = false;
 static bool initSensor() {
     // begin() takes the I2C address. Default is 0x68 but we use 0x69.
     if (!imu.begin(ADDR_MPU6050, &Wire)) {
-        Serial.println("[IMU] ERROR: MPU6050 not found. Check AD0 pin to 3.3V.");
+        Logger::error("IMU", "MPU6050 not found. Check AD0 pin to 3.3V.");
         return false;
     }
     // ±2g is most sensitive range — best for subtle patient motion.
@@ -49,20 +50,20 @@ static bool initSensor() {
     // Human motion is mostly below 10 Hz. This cuts motor and structural vibration.
     imu.setFilterBandwidth(MPU6050_BAND_21_HZ);
 
-    Serial.println("[IMU] MPU6050 initialised.");
+    Logger::info("IMU", "MPU6050 initialised.");
     return true;
 }
 
 // ──────────────────────────────────────────────────────────────────
 void vMotionTask(void *pvParameters) {
-    Serial.printf("[IMU] Task started on Core %d\n", xPortGetCoreID());
+    Logger::info("IMU", "Task started on Core %d", xPortGetCoreID());
 
     if (xSemaphoreTake(xI2CMutex, pdMS_TO_TICKS(2000)) == pdTRUE) {
         imuOK = initSensor();
         xSemaphoreGive(xI2CMutex);
     }
     if (!imuOK) {
-        Serial.println("[IMU] Task terminating — sensor not found.");
+        Logger::error("IMU", "Task terminating — sensor not found.");
         vTaskDelete(NULL);
         return;
     }
@@ -106,10 +107,7 @@ void vMotionTask(void *pvParameters) {
         // A latch-and-clear pattern holds the flag for one publish cycle.
         if (motionData.accelMag > FALL_THRESHOLD) {
             motionData.fallDetected = true;
-            if (serialLoggingEnabled) {
-                Serial.printf("[IMU] FALL DETECTED! Magnitude: %.2f m/s²\n",
-                              motionData.accelMag);
-            }
+            Logger::warn("IMU", "FALL DETECTED! Magnitude: %.2f m/s²", motionData.accelMag);
         } else {
             motionData.fallDetected = false;
         }

@@ -5,7 +5,7 @@ extern String current_wifi_ssid;
 extern String current_wifi_pass;
 extern String current_api_endpoint;
 extern String current_api_token;
-extern bool serialLoggingEnabled;
+extern bool debugModeEnabled;
 
 void loadConfig();
 void saveConfig(const String& ssid, const String& pass, const String& api_ep, const String& api_token);

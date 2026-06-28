@@ -3,6 +3,7 @@
 #include "../../include/types.h"
 #include "../../include/rtos_handles.h"
 #include "../config_store.h"
+#include "../logger.h"
 
 #include <Wire.h>
 #include <MAX30105.h>
@@ -62,7 +63,7 @@ static VitalData_t hrData = {};
 // ──────────────────────────────────────────────────────────────────
 static bool initSensor() {
     if (!sensor.begin(Wire, I2C_SPEED_STANDARD)) {
-        Serial.println("[HR] ERROR: MAX30105 not found on I2C bus.");
+        Logger::error("HR", "MAX30105 not found on I2C bus.");
         return false;
     }
     sensor.setup(
@@ -73,20 +74,20 @@ static bool initSensor() {
         HR_PULSE_WIDTH,  // LED pulse width (411 µs = 18-bit ADC resolution)
         HR_ADC_RANGE     // ADC full-scale range in nA
     );
-    Serial.println("[HR] MAX30105 initialised.");
+    Logger::info("HR", "MAX30105 initialised.");
     return true;
 }
 
 // ──────────────────────────────────────────────────────────────────
 void vHeartRateTask(void *pvParameters) {
-    Serial.printf("[HR] Task started on Core %d\n", xPortGetCoreID());
+    Logger::info("HR", "Task started on Core %d", xPortGetCoreID());
 
     // ── Sensor init (inside task, owns the I2C transaction) ──────
     if (xSemaphoreTake(xI2CMutex, pdMS_TO_TICKS(2000)) == pdTRUE) {
         bool ok = initSensor();
         xSemaphoreGive(xI2CMutex);
         if (!ok) {
-            Serial.println("[HR] Task terminating — sensor not found.");
+            Logger::error("HR", "Task terminating — sensor not found.");
             vTaskDelete(NULL);
             return;
         }
@@ -213,15 +214,13 @@ void vHeartRateTask(void *pvParameters) {
 
             // xAPIQueue: size-30 FIFO — no data loss even if network is slow
             if (xQueueSend(xAPIQueue, &hrData, pdMS_TO_TICKS(20)) != pdTRUE) {
-                Serial.println("[HR] WARN: API queue full — reading dropped.");
+                Logger::warn("HR", "API queue full — reading dropped.");
             }
 
-            if (serialLoggingEnabled) {
-                Serial.printf("[HR] BPM: %d | SpO2: %.0f%% | Finger: %s\n",
-                              avgBPM,
-                              hrData.spO2,
-                              hrData.fingerDetected ? "YES" : "NO");
-            }
+            Logger::debug("HR", "BPM: %d | SpO2: %.0f%% | Finger: %s",
+                          avgBPM,
+                          hrData.spO2,
+                          hrData.fingerDetected ? "YES" : "NO");
         }
 
         // ═══ STEP 7: Precise sleep ════════════════════════════════
