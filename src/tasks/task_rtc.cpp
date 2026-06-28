@@ -117,3 +117,13 @@ void vRTCTask(void *pvParameters) {
         vTaskDelayUntil(&xLastWake, xPeriod);
     }
 }
+
+void setRTCTime(uint16_t year, uint8_t month, uint8_t day, uint8_t hour, uint8_t min, uint8_t sec) {
+    if (xSemaphoreTake(xI2CMutex, pdMS_TO_TICKS(1000)) == pdTRUE) {
+        rtc.adjust(DateTime(year, month, day, hour, min, sec));
+        xSemaphoreGive(xI2CMutex);
+        Serial.println("[RTC] Time updated successfully via CLI.");
+    } else {
+        Serial.println("[RTC] ERROR: Could not acquire I2C mutex to set time.");
+    }
+}

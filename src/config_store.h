@@ -8,3 +8,6 @@ extern String current_api_token;
 
 void loadConfig();
 void saveConfig(const String& ssid, const String& pass, const String& api_ep, const String& api_token);
+
+void addLog(const String& msg);
+void printLogs();

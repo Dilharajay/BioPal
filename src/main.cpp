@@ -108,6 +108,7 @@ void setup() {
 
     // Load configuration from NVS
     loadConfig();
+    addLog("System Booted");
 
     // ── Step 1: I2C bus init ─────────────────────────────────────
     // Wire.begin() configures the hardware I2C peripheral.
@@ -176,6 +177,27 @@ void setup() {
 // It only wakes every 10 seconds to print diagnostics.
 // It has no sensor or network work to do — that is all in the tasks.
 // ──────────────────────────────────────────────────────────────────
+void printStatus() {
+    Serial.println("\n─── System Health ─────────────────────────────");
+    Serial.printf("  Free heap   : %6u bytes\n", esp_get_free_heap_size());
+    Serial.printf("  Active tasks: %6u\n",       uxTaskGetNumberOfTasks());
+    Serial.printf("  WiFi RSSI   : %6d dBm\n",   WiFi.RSSI());
+    Serial.printf("  Uptime      : %6lu s\n",    millis() / 1000);
+
+    Serial.println("  Stack HWM (words = 4 bytes each):");
+    if (hHeartRateTask) Serial.printf("    HeartRate : %4u words\n", uxTaskGetStackHighWaterMark(hHeartRateTask));
+    if (hBodyTempTask)  Serial.printf("    BodyTemp  : %4u words\n", uxTaskGetStackHighWaterMark(hBodyTempTask));
+    if (hMotionTask)    Serial.printf("    Motion    : %4u words\n", uxTaskGetStackHighWaterMark(hMotionTask));
+    if (hRTCTask)       Serial.printf("    RTC       : %4u words\n", uxTaskGetStackHighWaterMark(hRTCTask));
+    if (hDisplayTask)   Serial.printf("    Display   : %4u words\n", uxTaskGetStackHighWaterMark(hDisplayTask));
+    if (hAPITask)       Serial.printf("    API       : %4u words\n", uxTaskGetStackHighWaterMark(hAPITask));
+    if (hOTATask)       Serial.printf("    OTA       : %4u words\n", uxTaskGetStackHighWaterMark(hOTATask));
+
+    Serial.printf("  API queue   : %4u / %u items waiting\n",
+                  uxQueueMessagesWaiting(xAPIQueue), Q_API_LEN);
+    Serial.println("───────────────────────────────────────────────");
+}
+
 String cliBuffer = "";
 uint32_t lastHealthReport = 0;
 
@@ -196,6 +218,21 @@ void processCLI(const String& cmd) {
             saveConfig("", "", url, token);
             Serial.println("API config saved.");
         }
+    } else if (cmd.startsWith("set time ")) {
+        // Expected format: set time YYYY-MM-DD HH:MM:SS
+        //                  0123456789012345678901234567
+        if (cmd.length() >= 28) {
+            uint16_t year = cmd.substring(9, 13).toInt();
+            uint8_t month = cmd.substring(14, 16).toInt();
+            uint8_t day = cmd.substring(17, 19).toInt();
+            uint8_t hour = cmd.substring(20, 22).toInt();
+            uint8_t min = cmd.substring(23, 25).toInt();
+            uint8_t sec = cmd.substring(26, 28).toInt();
+            setRTCTime(year, month, day, hour, min, sec);
+            addLog("Time manually set via CLI");
+        } else {
+            Serial.println("Usage: set time YYYY-MM-DD HH:MM:SS");
+        }
     } else if (cmd == "show") {
         Serial.println("--- Current Config ---");
         Serial.println("WiFi SSID: " + current_wifi_ssid);
@@ -203,6 +240,10 @@ void processCLI(const String& cmd) {
         Serial.println("API Endpt: " + current_api_endpoint);
         Serial.println("API Token: " + current_api_token);
         Serial.println("----------------------");
+    } else if (cmd == "status") {
+        printStatus();
+    } else if (cmd == "logs") {
+        printLogs();
     } else if (cmd == "reboot") {
         Serial.println("Rebooting...");
         esp_restart();
@@ -210,7 +251,10 @@ void processCLI(const String& cmd) {
         Serial.println("Unknown command. Available:");
         Serial.println("  set wifi <ssid> <password>");
         Serial.println("  set api <url> <token>");
+        Serial.println("  set time <YYYY-MM-DD> <HH:MM:SS>");
         Serial.println("  show");
+        Serial.println("  status");
+        Serial.println("  logs");
         Serial.println("  reboot");
     }
 }
@@ -230,26 +274,7 @@ void loop() {
 
     if (millis() - lastHealthReport > 10000) {
         lastHealthReport = millis();
-        // ── System health report ─────────────────────────────────────
-        Serial.println("\n─── System Health ─────────────────────────────");
-        Serial.printf("  Free heap   : %6u bytes\n", esp_get_free_heap_size());
-        Serial.printf("  Active tasks: %6u\n",       uxTaskGetNumberOfTasks());
-        Serial.printf("  WiFi RSSI   : %6d dBm\n",   WiFi.RSSI());
-        Serial.printf("  Uptime      : %6lu s\n",    millis() / 1000);
-
-        // ── Stack high-water marks ───────────────────────────────────
-        Serial.println("  Stack HWM (words = 4 bytes each):");
-        if (hHeartRateTask) Serial.printf("    HeartRate : %4u words\n", uxTaskGetStackHighWaterMark(hHeartRateTask));
-        if (hBodyTempTask)  Serial.printf("    BodyTemp  : %4u words\n", uxTaskGetStackHighWaterMark(hBodyTempTask));
-        if (hMotionTask)    Serial.printf("    Motion    : %4u words\n", uxTaskGetStackHighWaterMark(hMotionTask));
-        if (hRTCTask)       Serial.printf("    RTC       : %4u words\n", uxTaskGetStackHighWaterMark(hRTCTask));
-        if (hDisplayTask)   Serial.printf("    Display   : %4u words\n", uxTaskGetStackHighWaterMark(hDisplayTask));
-        if (hAPITask)       Serial.printf("    API       : %4u words\n", uxTaskGetStackHighWaterMark(hAPITask));
-        if (hOTATask)       Serial.printf("    OTA       : %4u words\n", uxTaskGetStackHighWaterMark(hOTATask));
-
-        Serial.printf("  API queue   : %4u / %u items waiting\n",
-                      uxQueueMessagesWaiting(xAPIQueue), Q_API_LEN);
-        Serial.println("───────────────────────────────────────────────");
+        printStatus();
     }
     
     // Sleep briefly to keep CLI responsive
