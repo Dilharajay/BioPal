@@ -240,6 +240,12 @@ void processCLI(const String& cmd) {
         Serial.println("API Endpt: " + current_api_endpoint);
         Serial.println("API Token: " + current_api_token);
         Serial.println("----------------------");
+    } else if (cmd == "start") {
+        serialLoggingEnabled = true;
+        Serial.println("Live logging started. Type 'stop' to pause.");
+    } else if (cmd == "stop") {
+        serialLoggingEnabled = false;
+        Serial.println("Live logging stopped.");
     } else if (cmd == "status") {
         printStatus();
     } else if (cmd == "logs") {
@@ -249,6 +255,8 @@ void processCLI(const String& cmd) {
         esp_restart();
     } else {
         Serial.println("Unknown command. Available:");
+        Serial.println("  start");
+        Serial.println("  stop");
         Serial.println("  set wifi <ssid> <password>");
         Serial.println("  set api <url> <token>");
         Serial.println("  set time <YYYY-MM-DD> <HH:MM:SS>");
@@ -274,7 +282,9 @@ void loop() {
 
     if (millis() - lastHealthReport > 10000) {
         lastHealthReport = millis();
-        printStatus();
+        if (serialLoggingEnabled) {
+            printStatus();
+        }
     }
     
     // Sleep briefly to keep CLI responsive

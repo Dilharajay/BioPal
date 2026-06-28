@@ -2,6 +2,7 @@
 #include "../../include/config.h"
 #include "../../include/types.h"
 #include "../../include/rtos_handles.h"
+#include "../config_store.h"
 
 #include <Wire.h>
 #include <MAX30105.h>
@@ -215,10 +216,12 @@ void vHeartRateTask(void *pvParameters) {
                 Serial.println("[HR] WARN: API queue full — reading dropped.");
             }
 
-            Serial.printf("[HR] BPM: %d | SpO2: %.0f%% | Finger: %s\n",
-                          avgBPM,
-                          hrData.spO2,
-                          hrData.fingerDetected ? "YES" : "NO");
+            if (serialLoggingEnabled) {
+                Serial.printf("[HR] BPM: %d | SpO2: %.0f%% | Finger: %s\n",
+                              avgBPM,
+                              hrData.spO2,
+                              hrData.fingerDetected ? "YES" : "NO");
+            }
         }
 
         // ═══ STEP 7: Precise sleep ════════════════════════════════

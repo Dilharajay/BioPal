@@ -114,14 +114,18 @@ void vAPITask(void *pvParameters) {
 
         if (code > 0) {
             totalSent++;
-            Serial.printf("[API] POST #%u → HTTP %d | HR:%.0f SpO2:%.0f T:%.1fC\n",
-                          totalSent, code,
-                          data.heartRate, data.spO2, data.bodyTempC);
+            if (serialLoggingEnabled) {
+                Serial.printf("[API] POST #%u → HTTP %d | HR:%.0f SpO2:%.0f T:%.1fC\n",
+                              totalSent, code,
+                              data.heartRate, data.spO2, data.bodyTempC);
+            }
             if (code >= 400) {
                 // Server responded with an error — log first 120 chars of body
                 String body = http.getString();
-                Serial.printf("[API] Server error body: %s\n",
-                              body.substring(0, 120).c_str());
+                if (serialLoggingEnabled) {
+                    Serial.printf("[API] Server error body: %s\n",
+                                  body.substring(0, 120).c_str());
+                }
             }
         } else {
             // Negative code = transport failure (DNS, TCP timeout, etc.)

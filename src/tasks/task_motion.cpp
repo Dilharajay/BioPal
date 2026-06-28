@@ -2,6 +2,7 @@
 #include "../../include/config.h"
 #include "../../include/types.h"
 #include "../../include/rtos_handles.h"
+#include "../config_store.h"
 
 #include <Wire.h>
 #include <Adafruit_MPU6050.h>
@@ -105,8 +106,10 @@ void vMotionTask(void *pvParameters) {
         // A latch-and-clear pattern holds the flag for one publish cycle.
         if (motionData.accelMag > FALL_THRESHOLD) {
             motionData.fallDetected = true;
-            Serial.printf("[IMU] FALL DETECTED! Magnitude: %.2f m/s²\n",
-                          motionData.accelMag);
+            if (serialLoggingEnabled) {
+                Serial.printf("[IMU] FALL DETECTED! Magnitude: %.2f m/s²\n",
+                              motionData.accelMag);
+            }
         } else {
             motionData.fallDetected = false;
         }

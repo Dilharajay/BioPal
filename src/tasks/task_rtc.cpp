@@ -2,6 +2,7 @@
 #include "../../include/config.h"
 #include "../../include/types.h"
 #include "../../include/rtos_handles.h"
+#include "../config_store.h"
 
 #include <Wire.h>
 #include <RTClib.h>
@@ -112,7 +113,9 @@ void vRTCTask(void *pvParameters) {
         xQueueOverwrite(xDisplayQueue, &rtcData);
         xQueueSend(xAPIQueue, &rtcData, pdMS_TO_TICKS(10));
 
-        Serial.printf("[RTC] %s %s\n", rtcData.dateStr, rtcData.timeStr);
+        if (serialLoggingEnabled) {
+            Serial.printf("[RTC] %s %s\n", rtcData.dateStr, rtcData.timeStr);
+        }
 
         vTaskDelayUntil(&xLastWake, xPeriod);
     }

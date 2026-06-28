@@ -5,6 +5,7 @@ String current_wifi_ssid = "";
 String current_wifi_pass = "";
 String current_api_endpoint = "";
 String current_api_token = "";
+bool serialLoggingEnabled = false;
 
 static Preferences preferences;
 

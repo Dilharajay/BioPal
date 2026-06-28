@@ -2,6 +2,7 @@
 #include "../../include/config.h"
 #include "../../include/types.h"
 #include "../../include/rtos_handles.h"
+#include "../config_store.h"
 
 #include <Wire.h>
 #include <ClosedCube_MAX30205.h>
@@ -141,8 +142,10 @@ void vBodyTempTask(void *pvParameters) {
                 xQueueSend(xAPIQueue, &tempData, pdMS_TO_TICKS(20));
 
                 if (tempData.bodyTempValid) {
-                    Serial.printf("[TEMP] %.2f C (%.2f F)\n",
-                                  tempData.bodyTempC, tempData.bodyTempF);
+                    if (serialLoggingEnabled) {
+                        Serial.printf("[TEMP] %.2f C (%.2f F)\n",
+                                      tempData.bodyTempC, tempData.bodyTempF);
+                    }
                 }
             }
 
