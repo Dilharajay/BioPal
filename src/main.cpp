@@ -308,8 +308,14 @@ void loop() {
                 processCLI(cliBuffer);
                 cliBuffer = "";
             }
-        } else {
-            cliBuffer += c;
+        } else if (isprint(c)) {
+            // Only add printable characters, up to 100 max to prevent OOM
+            if (cliBuffer.length() < 100) {
+                cliBuffer += c;
+            } else {
+                // Buffer filled with noise or too long, clear it
+                cliBuffer = "";
+            }
         }
     }
 
