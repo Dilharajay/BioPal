@@ -38,8 +38,8 @@
 // Safe rule: headroom > 100 words (400 bytes). Double if unsure.
 #define STACK_HEART_RATE    4096
 #define STACK_BODY_TEMP     4096
-#define STACK_MOTION        2048
-#define STACK_RTC           2048
+#define STACK_MOTION        4096
+#define STACK_RTC           4096
 #define STACK_DISPLAY       3072
 #define STACK_API           8192   // HTTP client needs deep stack
 #define STACK_OTA           4096
