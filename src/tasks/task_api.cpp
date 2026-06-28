@@ -2,6 +2,7 @@
 #include "../../include/config.h"
 #include "../../include/types.h"
 #include "../../include/rtos_handles.h"
+#include "../config_store.h"
 
 #include <WiFi.h>
 #include <HTTPClient.h>
@@ -104,10 +105,10 @@ void vAPITask(void *pvParameters) {
 
         // ── HTTP POST ─────────────────────────────────────────────
         HTTPClient http;
-        http.begin(API_ENDPOINT);
+        http.begin(current_api_endpoint.c_str());
         http.setTimeout(API_TIMEOUT_MS);
         http.addHeader("Content-Type",  "application/json");
-        http.addHeader("Authorization", API_AUTH_TOKEN);
+        http.addHeader("Authorization", current_api_token.c_str());
 
         int code = http.POST(payload);
 

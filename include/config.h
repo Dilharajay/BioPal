@@ -24,13 +24,9 @@
 #define OLED_RESET_PIN       -1   // -1 = shared reset via software
 
 // ── WIFI ────────────────────────────────────────────────────────
-#define WIFI_SSID           "SLT-4G-87D7"
-#define WIFI_PASS           "HJBT5JD1NY0"
 #define WIFI_TIMEOUT_MS     15000
 
 // ── API ENDPOINT ────────────────────────────────────────────────
-#define API_ENDPOINT        "http://192.168.1.100:3000/api/vitals"
-#define API_AUTH_TOKEN      "Bearer your-token-here"
 #define API_TIMEOUT_MS      5000
 
 // ── OTA ─────────────────────────────────────────────────────────

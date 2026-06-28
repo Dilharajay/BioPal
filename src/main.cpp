@@ -5,6 +5,7 @@
 #include "../include/config.h"
 #include "../include/types.h"
 #include "../include/rtos_handles.h"
+#include "config_store.h"
 
 #include "tasks/task_heart_rate.h"
 #include "tasks/task_body_temp.h"
@@ -43,9 +44,9 @@ extern "C" void IRAM_ATTR vApplicationStackOverflowHook(
 
 // ──────────────────────────────────────────────────────────────────
 static void connectWiFi() {
-    Serial.printf("[WiFi] Connecting to \"%s\"", WIFI_SSID);
+    Serial.printf("[WiFi] Connecting to \"%s\"", current_wifi_ssid.c_str());
     WiFi.mode(WIFI_STA);
-    WiFi.begin(WIFI_SSID, WIFI_PASS);
+    WiFi.begin(current_wifi_ssid.c_str(), current_wifi_pass.c_str());
 
     uint32_t start = millis();
     while (WiFi.status() != WL_CONNECTED) {
@@ -104,6 +105,9 @@ void setup() {
     Serial.println("    Multi-Vital Health Monitor");
     Serial.println("    ESP32 + FreeRTOS");
     Serial.println("========================================");
+
+    // Load configuration from NVS
+    loadConfig();
 
     // ── Step 1: I2C bus init ─────────────────────────────────────
     // Wire.begin() configures the hardware I2C peripheral.
@@ -172,31 +176,82 @@ void setup() {
 // It only wakes every 10 seconds to print diagnostics.
 // It has no sensor or network work to do — that is all in the tasks.
 // ──────────────────────────────────────────────────────────────────
+String cliBuffer = "";
+uint32_t lastHealthReport = 0;
+
+void processCLI(const String& cmd) {
+    if (cmd.startsWith("set wifi ")) {
+        int space1 = cmd.indexOf(' ', 9);
+        if (space1 != -1) {
+            String ssid = cmd.substring(9, space1);
+            String pass = cmd.substring(space1 + 1);
+            saveConfig(ssid, pass, "", "");
+            Serial.println("WiFi config saved. Reboot to apply.");
+        }
+    } else if (cmd.startsWith("set api ")) {
+        int space1 = cmd.indexOf(' ', 8);
+        if (space1 != -1) {
+            String url = cmd.substring(8, space1);
+            String token = cmd.substring(space1 + 1);
+            saveConfig("", "", url, token);
+            Serial.println("API config saved.");
+        }
+    } else if (cmd == "show") {
+        Serial.println("--- Current Config ---");
+        Serial.println("WiFi SSID: " + current_wifi_ssid);
+        Serial.println("WiFi Pass: " + current_wifi_pass);
+        Serial.println("API Endpt: " + current_api_endpoint);
+        Serial.println("API Token: " + current_api_token);
+        Serial.println("----------------------");
+    } else if (cmd == "reboot") {
+        Serial.println("Rebooting...");
+        esp_restart();
+    } else {
+        Serial.println("Unknown command. Available:");
+        Serial.println("  set wifi <ssid> <password>");
+        Serial.println("  set api <url> <token>");
+        Serial.println("  show");
+        Serial.println("  reboot");
+    }
+}
+
 void loop() {
-    // ── System health report ─────────────────────────────────────
-    Serial.println("\n─── System Health ─────────────────────────────");
-    Serial.printf("  Free heap   : %6u bytes\n", esp_get_free_heap_size());
-    Serial.printf("  Active tasks: %6u\n",       uxTaskGetNumberOfTasks());
-    Serial.printf("  WiFi RSSI   : %6d dBm\n",   WiFi.RSSI());
-    Serial.printf("  Uptime      : %6lu s\n",    millis() / 1000);
+    while (Serial.available()) {
+        char c = Serial.read();
+        if (c == '\n' || c == '\r') {
+            if (cliBuffer.length() > 0) {
+                processCLI(cliBuffer);
+                cliBuffer = "";
+            }
+        } else {
+            cliBuffer += c;
+        }
+    }
 
-    // ── Stack high-water marks ───────────────────────────────────
-    // uxTaskGetStackHighWaterMark() returns the MINIMUM free stack space
-    // ever observed for a task (in words = 4 bytes each on ESP32).
-    // Trend toward zero → increase that task's stack in config.h.
-    Serial.println("  Stack HWM (words = 4 bytes each):");
-    if (hHeartRateTask) Serial.printf("    HeartRate : %4u words\n", uxTaskGetStackHighWaterMark(hHeartRateTask));
-    if (hBodyTempTask)  Serial.printf("    BodyTemp  : %4u words\n", uxTaskGetStackHighWaterMark(hBodyTempTask));
-    if (hMotionTask)    Serial.printf("    Motion    : %4u words\n", uxTaskGetStackHighWaterMark(hMotionTask));
-    if (hRTCTask)       Serial.printf("    RTC       : %4u words\n", uxTaskGetStackHighWaterMark(hRTCTask));
-    if (hDisplayTask)   Serial.printf("    Display   : %4u words\n", uxTaskGetStackHighWaterMark(hDisplayTask));
-    if (hAPITask)       Serial.printf("    API       : %4u words\n", uxTaskGetStackHighWaterMark(hAPITask));
-    if (hOTATask)       Serial.printf("    OTA       : %4u words\n", uxTaskGetStackHighWaterMark(hOTATask));
+    if (millis() - lastHealthReport > 10000) {
+        lastHealthReport = millis();
+        // ── System health report ─────────────────────────────────────
+        Serial.println("\n─── System Health ─────────────────────────────");
+        Serial.printf("  Free heap   : %6u bytes\n", esp_get_free_heap_size());
+        Serial.printf("  Active tasks: %6u\n",       uxTaskGetNumberOfTasks());
+        Serial.printf("  WiFi RSSI   : %6d dBm\n",   WiFi.RSSI());
+        Serial.printf("  Uptime      : %6lu s\n",    millis() / 1000);
 
-    Serial.printf("  API queue   : %4u / %u items waiting\n",
-                  uxQueueMessagesWaiting(xAPIQueue), Q_API_LEN);
-    Serial.println("───────────────────────────────────────────────");
+        // ── Stack high-water marks ───────────────────────────────────
+        Serial.println("  Stack HWM (words = 4 bytes each):");
+        if (hHeartRateTask) Serial.printf("    HeartRate : %4u words\n", uxTaskGetStackHighWaterMark(hHeartRateTask));
+        if (hBodyTempTask)  Serial.printf("    BodyTemp  : %4u words\n", uxTaskGetStackHighWaterMark(hBodyTempTask));
+        if (hMotionTask)    Serial.printf("    Motion    : %4u words\n", uxTaskGetStackHighWaterMark(hMotionTask));
+        if (hRTCTask)       Serial.printf("    RTC       : %4u words\n", uxTaskGetStackHighWaterMark(hRTCTask));
+        if (hDisplayTask)   Serial.printf("    Display   : %4u words\n", uxTaskGetStackHighWaterMark(hDisplayTask));
+        if (hAPITask)       Serial.printf("    API       : %4u words\n", uxTaskGetStackHighWaterMark(hAPITask));
+        if (hOTATask)       Serial.printf("    OTA       : %4u words\n", uxTaskGetStackHighWaterMark(hOTATask));
 
-    // Sleep 10 seconds. All sensor tasks continue running freely.
-    vTaskDelay(pdMS_TO_TICKS(10000));
+        Serial.printf("  API queue   : %4u / %u items waiting\n",
+                      uxQueueMessagesWaiting(xAPIQueue), Q_API_LEN);
+        Serial.println("───────────────────────────────────────────────");
+    }
+    
+    // Sleep briefly to keep CLI responsive
+    vTaskDelay(pdMS_TO_TICKS(50));
 }
