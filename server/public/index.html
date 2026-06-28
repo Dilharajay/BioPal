@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Health Monitor Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="dashboard-container">
+        <header>
+            <h1>Vital <span>Monitor</span></h1>
+            <div class="status-indicator">
+                <div class="pulse-dot"></div>
+                <span id="connection-status">Awaiting Data...</span>
+            </div>
+        </header>
+
+        <main class="grid">
+            <!-- Heart Rate Card -->
+            <div class="card stat-card">
+                <div class="card-icon heart-icon">❤</div>
+                <div class="card-info">
+                    <h2>Heart Rate</h2>
+                    <div class="value"><span id="hr-value">--</span> <span class="unit">bpm</span></div>
+                    <div class="subtext">SpO2: <span id="spo2-value">--</span>%</div>
+                </div>
+            </div>
+
+            <!-- Temperature Card -->
+            <div class="card stat-card">
+                <div class="card-icon temp-icon">🌡</div>
+                <div class="card-info">
+                    <h2>Body Temp</h2>
+                    <div class="value"><span id="temp-value">--</span> <span class="unit">°C</span></div>
+                    <div class="subtext"><span id="temp-f-value">--</span> °F</div>
+                </div>
+            </div>
+
+            <!-- Motion & Fall Card -->
+            <div class="card stat-card">
+                <div class="card-icon fall-icon">⚠</div>
+                <div class="card-info">
+                    <h2>Motion Status</h2>
+                    <div class="value"><span id="fall-value">Safe</span></div>
+                    <div class="subtext">Accel Mag: <span id="accel-value">--</span> g</div>
+                </div>
+            </div>
+
+            <!-- Meta Data Card -->
+            <div class="card meta-card">
+                <h2>System Info</h2>
+                <ul>
+                    <li>Device Uptime: <span id="uptime-value">--</span> s</li>
+                    <li>WiFi RSSI: <span id="rssi-value">--</span> dBm</li>
+                    <li>Last Update: <span id="time-value">--</span></li>
+                </ul>
+            </div>
+        </main>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

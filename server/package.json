@@ -1,0 +1,12 @@
+{
+  "name": "multisensor-server",
+  "version": "1.0.0",
+  "description": "Server to receive and visualize ESP32 vital data",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}
