@@ -60,10 +60,22 @@ void showBootScreen() {
         oled.setTextColor(SSD1306_WHITE);
         oled.setTextSize(1);
         oled.setCursor(0, 0);
-        oled.println("  BioPal Monitor");
-        oled.println("");
-        oled.println("   Booting...");
-        oled.display();
+        
+        const char* lines[] = {
+            "BioPal OS v1.0",
+            "CPU: ESP32 240MHz",
+            "RAM: 520 KB OK",
+            "I2C Bus: OK",
+            "Sensors: INIT",
+            "Booting kernel..."
+        };
+        
+        for (int i = 0; i < 6; i++) {
+            oled.println(lines[i]);
+            oled.display();
+            delay(120); // Fast PC-like boot sequence
+        }
+        
         xSemaphoreGive(xI2CMutex);
     }
 }
@@ -71,13 +83,10 @@ void showBootScreen() {
 void showWiFiScreen() {
     if (!oledOK) return;
     if (xSemaphoreTake(xI2CMutex, pdMS_TO_TICKS(100)) == pdTRUE) {
-        oled.clearDisplay();
+        // Do not clear display, append to boot screen
         oled.setTextColor(SSD1306_WHITE);
         oled.setTextSize(1);
-        oled.setCursor(0, 0);
-        oled.println("  BioPal Monitor");
-        oled.println("");
-        oled.println(" Connecting WiFi...");
+        oled.println("WLAN: Connecting...");
         oled.display();
         xSemaphoreGive(xI2CMutex);
     }
