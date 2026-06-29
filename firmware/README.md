@@ -77,14 +77,6 @@ med_mon> reboot
 ```
 *Note: Any settings changed will automatically be saved to Non-Volatile Storage (NVS) across reboots.*
 
-### 4. Run the Python Dashboard Server
-The backend relies purely on a lightweight Python Flask server. Navigate to the `server/` directory, install the required packages, and start the local server:
-```bash
-cd server
-pip install -r requirements.txt
-python server.py
-```
-Open your browser and navigate to **`http://localhost:3000`** to view the live dashboard!
 
 ## 💻 UART CLI Commands Reference
 
