@@ -10,17 +10,17 @@ bool debugModeEnabled = false;
 static Preferences preferences;
 
 void loadConfig() {
-    preferences.begin("health-mon", true); // read-only mode first
-    current_wifi_ssid = preferences.getString("wifi_ssid", "SLT-4G-87D7");
-    current_wifi_pass = preferences.getString("wifi_pass", "HJBT5JD1NY0");
-    current_api_endpoint = preferences.getString("api_ep", "http://192.168.1.100:3000/api/vitals");
+    preferences.begin("biopal", true); // read-only mode first
+    current_wifi_ssid = preferences.getString("wifi_ssid", "your_ssid");
+    current_wifi_pass = preferences.getString("wifi_pass", "your_wifi_password");
+    current_api_endpoint = preferences.getString("api_ep", "http://<your-server-ip>/api/vitals");
     current_api_token = preferences.getString("api_token", "Bearer your-token-here");
     debugModeEnabled = preferences.getBool("debug_mode", false);
     preferences.end();
 }
 
 void saveConfig(const String& ssid, const String& pass, const String& api_ep, const String& api_token) {
-    preferences.begin("health-mon", false); // read-write mode
+    preferences.begin("biopal", false); // read-write mode
     
     if (ssid.length() > 0) {
         preferences.putString("wifi_ssid", ssid);
@@ -45,7 +45,7 @@ void saveConfig(const String& ssid, const String& pass, const String& api_ep, co
 }
 
 void addLog(const String& msg) {
-    preferences.begin("health-mon", false);
+    preferences.begin("biopal", false);
     uint8_t head = preferences.getUChar("log_head", 0);
     
     String key = "log" + String(head);
@@ -57,7 +57,7 @@ void addLog(const String& msg) {
 }
 
 void printLogs() {
-    preferences.begin("health-mon", true);
+    preferences.begin("biopal", true);
     uint8_t head = preferences.getUChar("log_head", 0);
     
     Serial.println("--- EEPROM Logs (Last 10) ---");

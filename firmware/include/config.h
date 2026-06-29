@@ -8,6 +8,8 @@
 #define PIN_SDA             21
 #define PIN_SCL             22
 
+#define I2C_FREQ           100000  // 400 kHz (fast mode), 100 kHz (standard mode) |max 1 MHz for ESP32
+
 // ── I2C DEVICE ADDRESSES ────────────────────────────────────────
 // CRITICAL: MPU6050 AD0 pin must be tied to 3.3V
 //           This changes its address from 0x68 → 0x69
