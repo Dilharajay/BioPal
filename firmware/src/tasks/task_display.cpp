@@ -24,34 +24,84 @@
 
 static Adafruit_SSD1306 oled(OLED_WIDTH, OLED_HEIGHT, &Wire, OLED_RESET_PIN);
 static bool              oledOK = false;
+static bool              otaMode = false;
 
 // ── Page cycling ─────────────────────────────────────────────────
 static DisplayPage_t currentPage  = PAGE_HEART;
 static TickType_t    lastPageFlip = 0;  // tick when we last switched pages
 
 // ──────────────────────────────────────────────────────────────────
-static bool initDisplay() {
-    // Some OLEDs need a moment to boot after power-on before responding on I2C
-    vTaskDelay(pdMS_TO_TICKS(100));
-
-    if (!oled.begin(SSD1306_SWITCHCAPVCC, ADDR_SSD1306)) {
-        Logger::warn("DISP", "SSD1306 not found at 0x%02X. Trying 0x3D...", ADDR_SSD1306);
-        if (!oled.begin(SSD1306_SWITCHCAPVCC, 0x3D)) {
-            Logger::error("DISP", "SSD1306 not found at 0x3D either.");
-            return false;
-        }
-        Logger::info("DISP", "SSD1306 found at 0x3D instead.");
-    }
+bool initDisplay() {
+    delay(100); // Safe in setup() and FreeRTOS task
     
-    oled.clearDisplay();
-    oled.setTextColor(SSD1306_WHITE);  // 1 = pixel on (OLED has no colour)
-    oled.setTextSize(1);               // 6×8 pixel font (21 chars across 128px)
-    oled.setCursor(0, 0);
-    oled.println("  Health Monitor");
-    oled.println("   Initialising...");
-    oled.display();
-    Logger::info("DISP", "SSD1306 initialised.");
-    return true;
+    if (xSemaphoreTake(xI2CMutex, pdMS_TO_TICKS(1000)) == pdTRUE) {
+        if (!oled.begin(SSD1306_SWITCHCAPVCC, ADDR_SSD1306)) {
+            Logger::warn("DISP", "SSD1306 not found at 0x%02X. Trying 0x3D...", ADDR_SSD1306);
+            if (!oled.begin(SSD1306_SWITCHCAPVCC, 0x3D)) {
+                Logger::error("DISP", "SSD1306 not found at 0x3D either.");
+                oledOK = false;
+                xSemaphoreGive(xI2CMutex);
+                return false;
+            }
+            Logger::info("DISP", "SSD1306 found at 0x3D instead.");
+        }
+        oledOK = true;
+        Logger::info("DISP", "SSD1306 initialised.");
+        xSemaphoreGive(xI2CMutex);
+        return true;
+    }
+    return false;
+}
+
+void showBootScreen() {
+    if (!oledOK) return;
+    if (xSemaphoreTake(xI2CMutex, pdMS_TO_TICKS(100)) == pdTRUE) {
+        oled.clearDisplay();
+        oled.setTextColor(SSD1306_WHITE);
+        oled.setTextSize(1);
+        oled.setCursor(0, 0);
+        oled.println("  BioPal Monitor");
+        oled.println("");
+        oled.println("   Booting...");
+        oled.display();
+        xSemaphoreGive(xI2CMutex);
+    }
+}
+
+void showWiFiScreen() {
+    if (!oledOK) return;
+    if (xSemaphoreTake(xI2CMutex, pdMS_TO_TICKS(100)) == pdTRUE) {
+        oled.clearDisplay();
+        oled.setTextColor(SSD1306_WHITE);
+        oled.setTextSize(1);
+        oled.setCursor(0, 0);
+        oled.println("  BioPal Monitor");
+        oled.println("");
+        oled.println(" Connecting WiFi...");
+        oled.display();
+        xSemaphoreGive(xI2CMutex);
+    }
+}
+
+void showOTAScreen(uint8_t progress) {
+    if (!oledOK) return;
+    otaMode = true;
+    if (xSemaphoreTake(xI2CMutex, pdMS_TO_TICKS(100)) == pdTRUE) {
+        oled.clearDisplay();
+        oled.setTextColor(SSD1306_WHITE);
+        oled.setTextSize(1);
+        oled.setCursor(0, 0);
+        oled.println("  BioPal Monitor");
+        oled.println("  OTA Updating...");
+        oled.setCursor(0, 20);
+        oled.printf("  Progress: %u%%", progress);
+        
+        oled.drawRect(14, 40, 100, 10, SSD1306_WHITE);
+        oled.fillRect(14, 40, progress, 10, SSD1306_WHITE);
+        
+        oled.display();
+        xSemaphoreGive(xI2CMutex);
+    }
 }
 
 // ──────────────────────────────────────────────────────────────────
@@ -193,10 +243,7 @@ static void drawPageClock(const VitalData_t &d) {
 void vDisplayTask(void *pvParameters) {
     Logger::info("DISP", "Task started on Core %d", xPortGetCoreID());
 
-    if (xSemaphoreTake(xI2CMutex, pdMS_TO_TICKS(2000)) == pdTRUE) {
-        oledOK = initDisplay();
-        xSemaphoreGive(xI2CMutex);
-    }
+    // Display is already initialized in setup, just check oledOK
     if (!oledOK) {
         Logger::error("DISP", "Task terminating — OLED not found.");
         vTaskDelete(NULL);
@@ -216,7 +263,7 @@ void vDisplayTask(void *pvParameters) {
         xQueuePeek(xDisplayQueue, &data, pdMS_TO_TICKS(10));
 
         // ── Auto-advance page every PERIOD_PAGE_FLIP ms ──────────
-        if ((xTaskGetTickCount() - lastPageFlip) >= pdMS_TO_TICKS(PERIOD_PAGE_FLIP)) {
+        if (!otaMode && (xTaskGetTickCount() - lastPageFlip) >= pdMS_TO_TICKS(PERIOD_PAGE_FLIP)) {
             lastPageFlip = xTaskGetTickCount();
             currentPage  = (DisplayPage_t)((currentPage + 1) % PAGE_COUNT);
         }
@@ -225,7 +272,7 @@ void vDisplayTask(void *pvParameters) {
         // Holding the I2C mutex only while writing to hardware.
         // All drawing is done inside the mutex block because the
         // SSD1306 library communicates over I2C during display().
-        if (xSemaphoreTake(xI2CMutex, pdMS_TO_TICKS(100)) == pdTRUE) {
+        if (!otaMode && xSemaphoreTake(xI2CMutex, pdMS_TO_TICKS(100)) == pdTRUE) {
 
             oled.clearDisplay(); // Zero the 1024-byte RAM framebuffer
 

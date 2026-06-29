@@ -47,6 +47,7 @@ extern "C" void IRAM_ATTR vApplicationStackOverflowHook(
 // ──────────────────────────────────────────────────────────────────
 static void connectWiFi() {
     Logger::info("WIFI", "Connecting to \"%s\"", current_wifi_ssid.c_str());
+    showWiFiScreen();
     WiFi.mode(WIFI_STA);
     WiFi.begin(current_wifi_ssid.c_str(), current_wifi_pass.c_str());
 
@@ -130,6 +131,10 @@ void setup() {
         while (true) { delay(1000); }
     }
     Serial.println("[Setup] I2C mutex created.");
+
+    // Init Display early for boot screens
+    initDisplay();
+    showBootScreen();
 
     // ── Step 3: Queues ────────────────────────────────────────────
     // xQueueCreate(length, itemSizeBytes) allocates from the FreeRTOS heap.

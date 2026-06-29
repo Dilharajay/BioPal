@@ -2,6 +2,7 @@
 #include "../../include/config.h"
 #include "../../include/rtos_handles.h"
 #include "../logger.h"
+#include "task_display.h"
 
 #include <WiFi.h>
 #include <ArduinoOTA.h>
@@ -52,6 +53,7 @@ void vOTATask(void *pvParameters) {
     ArduinoOTA.onStart([]() {
         String type = (ArduinoOTA.getCommand() == U_FLASH) ? "firmware" : "filesystem";
         Logger::info("OTA", "Update started: %s", type.c_str());
+        showOTAScreen(0);
     });
 
     ArduinoOTA.onEnd([]() {
@@ -59,11 +61,13 @@ void vOTATask(void *pvParameters) {
     });
 
     ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
-        // Print progress every 10% to avoid flooding Serial
-        static uint8_t lastPct = 0;
+        static uint8_t lastPct = 255;
         uint8_t pct = (progress * 100) / total;
-        if (pct / 10 != lastPct / 10) {
-            Logger::info("OTA", "Progress: %u%%", pct);
+        if (pct != lastPct) {
+            if (pct % 10 == 0) {
+                Logger::info("OTA", "Progress: %u%%", pct);
+            }
+            showOTAScreen(pct);
             lastPct = pct;
         }
     });
