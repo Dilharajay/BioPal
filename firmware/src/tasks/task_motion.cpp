@@ -1,9 +1,9 @@
 #include "task_motion.h"
-#include "../../include/config.h"
-#include "../../include/types.h"
-#include "../../include/rtos_handles.h"
-#include "../config_store.h"
-#include "../logger.h"
+#include "config.h"
+#include "types.h"
+#include "rtos_handles.h"
+#include "config_store.h"
+#include "logger.h"
 
 #include <Wire.h>
 #include <Adafruit_MPU6050.h>

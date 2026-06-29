@@ -2,12 +2,12 @@
 #include <Wire.h>
 #include <WiFi.h>
 
-#include "../include/config.h"
-#include "../include/types.h"
-#include "../include/rtos_handles.h"
+#include "config.h"
+#include "types.h"
+#include "rtos_handles.h"
 #include "config_store.h"
 #include "logger.h"
-#include "../include/cli.h"
+#include "cli.h"
 
 #include "tasks/task_heart_rate.h"
 #include "tasks/task_body_temp.h"

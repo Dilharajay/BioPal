@@ -1,13 +1,13 @@
-#include "../include/cli.h"
+#include "cli.h"
 #include <Arduino.h>
 #include <WiFi.h>
 
-#include "../include/config.h"
-#include "../include/types.h"
-#include "../include/rtos_handles.h"
+#include "config.h"
+#include "types.h"
+#include "rtos_handles.h"
 #include "config_store.h"
 #include "logger.h"
-#include "tasks/task_rtc.h"
+#include "../tasks/task_rtc.h"
 
 static String cliBuffer = "";
 static uint32_t lastHealthReport = 0;

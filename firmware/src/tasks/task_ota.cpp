@@ -1,7 +1,7 @@
 #include "task_ota.h"
-#include "../../include/config.h"
-#include "../../include/rtos_handles.h"
-#include "../logger.h"
+#include "config.h"
+#include "rtos_handles.h"
+#include "logger.h"
 #include "task_display.h"
 
 #include <WiFi.h>

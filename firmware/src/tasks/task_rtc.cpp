@@ -1,9 +1,9 @@
 #include "task_rtc.h"
-#include "../../include/config.h"
-#include "../../include/types.h"
-#include "../../include/rtos_handles.h"
-#include "../config_store.h"
-#include "../logger.h"
+#include "config.h"
+#include "types.h"
+#include "rtos_handles.h"
+#include "config_store.h"
+#include "logger.h"
 
 #include <Wire.h>
 #include <RTClib.h>
