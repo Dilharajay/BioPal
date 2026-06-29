@@ -109,7 +109,7 @@ void setup() {
 
     // Load configuration from NVS
     loadConfig();
-    Logger::setLevel(debugModeEnabled ? LOG_LEVEL_DEBUG : LOG_LEVEL_INFO);
+    Logger::setLevel(debugModeEnabled ? LOG_LEVEL_DEBUG : LOG_LEVEL_NONE);
     addLog("System Booted");
     Logger::info("SYS", "ESP32 System Booted");
 
@@ -171,6 +171,7 @@ void setup() {
     Serial.printf("[Setup] Free heap after task creation: %u bytes\n",
                   esp_get_free_heap_size());
     Serial.println("========================================\n");
+    Serial.print("med_mon> ");
     // setup() returns here. The FreeRTOS scheduler immediately starts
     // dispatching the highest-priority ready task.
 }
@@ -203,8 +204,16 @@ void printStatus() {
 
 String cliBuffer = "";
 uint32_t lastHealthReport = 0;
+bool isStreaming = false;
+uint32_t lastStreamTime = 0;
 
-void processCLI(const String& cmd) {
+void printPrompt() {
+    Serial.print("med_mon> ");
+}
+
+void processCLI(const String& cmdLine) {
+    String cmd = cmdLine;
+    cmd.trim();
     if (cmd.startsWith("set wifi ")) {
         int space1 = cmd.indexOf(' ', 9);
         if (space1 != -1) {
@@ -236,13 +245,14 @@ void processCLI(const String& cmd) {
         } else {
             Serial.println("Usage: set time YYYY-MM-DD HH:MM:SS");
         }
-    } else if (cmd == "show") {
+    } else if (cmd == "show" || cmd == "status") {
         Serial.println("--- Current Config ---");
         Serial.println("WiFi SSID: " + current_wifi_ssid);
         Serial.println("WiFi Pass: " + current_wifi_pass);
         Serial.println("API Endpt: " + current_api_endpoint);
         Serial.println("API Token: " + current_api_token);
         Serial.println("----------------------");
+        printStatus();
     } else if (cmd == "read") {
         VitalData_t currentData;
         if (xQueuePeek(xDisplayQueue, &currentData, 0) == pdTRUE) {
@@ -268,6 +278,10 @@ void processCLI(const String& cmd) {
         } else {
             Serial.println("Error: No sensor data available yet.");
         }
+    } else if (cmd == "stream" || cmd == "monitor") {
+        isStreaming = true;
+        Serial.println("\n[INFO] Sensor stream started. Press any key to stop.");
+        return; // Skip prompt
     } else if (cmd == "start" || cmd == "debug on") {
         debugModeEnabled = true;
         saveConfig("", "", "", "");
@@ -276,45 +290,79 @@ void processCLI(const String& cmd) {
     } else if (cmd == "stop" || cmd == "debug off") {
         debugModeEnabled = false;
         saveConfig("", "", "", "");
-        Logger::setLevel(LOG_LEVEL_INFO);
+        Logger::setLevel(LOG_LEVEL_NONE);
         Serial.println("Debug mode OFF (live logging paused).");
-    } else if (cmd == "status") {
-        printStatus();
     } else if (cmd == "logs") {
         printLogs();
-    } else if (cmd == "reboot") {
+    } else if (cmd == "reboot" || cmd == "restart") {
         Serial.println("Rebooting...");
         esp_restart();
-    } else {
-        Serial.println("Unknown command. Available:");
-        Serial.println("  read");
-        Serial.println("  start / debug on");
-        Serial.println("  stop / debug off");
-        Serial.println("  set wifi <ssid> <password>");
-        Serial.println("  set api <url> <token>");
-        Serial.println("  set time <YYYY-MM-DD> <HH:MM:SS>");
-        Serial.println("  show");
-        Serial.println("  status");
-        Serial.println("  logs");
-        Serial.println("  reboot");
+    } else if (cmd == "help") {
+        Serial.println("\n--- Available Commands ---");
+        Serial.println("help                    - Show this help menu");
+        Serial.println("show / status           - Display current config and system health");
+        Serial.println("read                    - Read single sensor snapshot");
+        Serial.println("stream / monitor        - Output live sensor readings periodically");
+        Serial.println("start / debug on        - Enable live diagnostic logging");
+        Serial.println("stop / debug off        - Disable live diagnostic logging");
+        Serial.println("logs                    - Show EEPROM log history");
+        Serial.println("reboot / restart        - Reboot the ESP32 chip");
+        Serial.println("\nConfiguration Commands:");
+        Serial.println("set wifi <ssid> <password>");
+        Serial.println("set api <url> <token>");
+        Serial.println("set time <YYYY-MM-DD> <HH:MM:SS>");
+        Serial.println("--------------------------");
+    } else if (cmd.length() > 0) {
+        Serial.println("Unknown command. Type 'help' for a list of commands.");
     }
+    printPrompt();
 }
 
 void loop() {
+    if (isStreaming) {
+        if (Serial.available() > 0) {
+            while (Serial.available()) Serial.read(); // Consume clear input
+            isStreaming = false;
+            Serial.println("\n[INFO] Sensor stream stopped.");
+            printPrompt();
+            cliBuffer = "";
+        } else {
+            if (millis() - lastStreamTime > 1000) {
+                lastStreamTime = millis();
+                VitalData_t currentData;
+                if (xQueuePeek(xDisplayQueue, &currentData, 0) == pdTRUE) {
+                    Serial.printf("[Stream] HR: %.0f BPM | SpO2: %.0f%% | Temp: %.2f C | Accel: %.2f m/s2\n",
+                                  currentData.hrValid ? currentData.heartRate : 0,
+                                  currentData.hrValid ? currentData.spO2 : 0,
+                                  currentData.bodyTempValid ? currentData.bodyTempC : 0,
+                                  currentData.accelMag);
+                }
+            }
+        }
+        vTaskDelay(pdMS_TO_TICKS(50));
+        return;
+    }
+
     while (Serial.available()) {
         char c = Serial.read();
         if (c == '\n' || c == '\r') {
             if (cliBuffer.length() > 0) {
+                Serial.println();
                 processCLI(cliBuffer);
                 cliBuffer = "";
+            } else {
+                Serial.println();
+                printPrompt();
+            }
+        } else if (c == '\b' || c == 127) { // Backspace or Delete
+            if (cliBuffer.length() > 0) {
+                cliBuffer.remove(cliBuffer.length() - 1);
+                Serial.print("\b \b");
             }
         } else if (isprint(c)) {
-            // Only add printable characters, up to 100 max to prevent OOM
             if (cliBuffer.length() < 100) {
                 cliBuffer += c;
-            } else {
-                // Buffer filled with noise or too long, clear it
-                cliBuffer = "";
+                Serial.print(c);
             }
         }
     }
@@ -322,7 +370,9 @@ void loop() {
     if (millis() - lastHealthReport > 10000) {
         lastHealthReport = millis();
         if (debugModeEnabled) {
+            Serial.println(); // Newline before status
             printStatus();
+            printPrompt();    // Reprint prompt after status finishes
         }
     }
     

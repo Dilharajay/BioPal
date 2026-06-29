@@ -499,7 +499,7 @@
             "defines": [
                 "PLATFORMIO=60119",
                 "ARDUINO_ESP32_DEV",
-                "CORE_DEBUG_LEVEL=3",
+                "CORE_DEBUG_LEVEL=0",
                 "configCHECK_FOR_STACK_OVERFLOW=2",
                 "configUSE_TRACE_FACILITY=1",
                 "HAVE_CONFIG_H",
