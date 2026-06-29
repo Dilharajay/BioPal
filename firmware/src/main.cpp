@@ -45,6 +45,8 @@ extern "C" void IRAM_ATTR vApplicationStackOverflowHook(
 }
 
 // ──────────────────────────────────────────────────────────────────
+#ifndef PIO_UNIT_TESTING
+
 static void connectWiFi() {
     Logger::info("WIFI", "Connecting to \"%s\"", current_wifi_ssid.c_str());
     showWiFiScreen();
@@ -187,6 +189,9 @@ void setup() {
 // It only wakes every 10 seconds to print diagnostics.
 // It has no sensor or network work to do — that is all in the tasks.
 // ──────────────────────────────────────────────────────────────────
+// ──────────────────────────────────────────────────────────────────
 void loop() {
     cli_loop();
 }
+
+#endif // PIO_UNIT_TESTING
