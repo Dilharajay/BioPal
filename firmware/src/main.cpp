@@ -103,7 +103,7 @@ void setup() {
     Serial.begin(115200);
     delay(300); // Let host serial monitor attach
     Serial.println("\n\n========================================");
-    Serial.println("    Multi-Vital Health Monitor");
+    Serial.println("    BioPal Health Monitor");
     Serial.println("    ESP32 + FreeRTOS");
     Serial.println("========================================");
 
@@ -171,7 +171,7 @@ void setup() {
     Serial.printf("[Setup] Free heap after task creation: %u bytes\n",
                   esp_get_free_heap_size());
     Serial.println("========================================\n");
-    Serial.print("med_mon> ");
+    Serial.print("biopal> ");
     // setup() returns here. The FreeRTOS scheduler immediately starts
     // dispatching the highest-priority ready task.
 }
@@ -208,7 +208,7 @@ bool isStreaming = false;
 uint32_t lastStreamTime = 0;
 
 void printPrompt() {
-    Serial.print("med_mon> ");
+    Serial.print("biopal> ");
 }
 
 void processCLI(const String& cmdLine) {

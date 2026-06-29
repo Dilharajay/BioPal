@@ -1,4 +1,4 @@
-# Multisensor Practice - Project Rules and Learnings
+# BioPal - Project Rules and Learnings
 
 ## UART CLI Design
 - When building or modifying a UART CLI for this project, avoid using blocking `delay()` calls or `Serial.print()` commands in a background loop that interrupt the user's prompt. 

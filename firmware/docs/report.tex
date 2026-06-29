@@ -11,7 +11,7 @@
 
 \title{
     \vspace{2cm}
-    \textbf{\Huge Multi-Vital Health Monitor Project Report}\\
+    \textbf{\Huge BioPal Health Monitor Project Report}\\
     \vspace{1cm}
     \large \textbf{An ESP32-based Real-time Wearable Health Monitor}\\
     \vspace{2cm}
@@ -24,14 +24,14 @@
 \maketitle
 
 \begin{abstract}
-This comprehensive report outlines the design, development, and implementation of a real-time, wearable Multi-Vital Health Monitor. Built on the dual-core ESP32 microcontroller and utilizing the FreeRTOS real-time operating system, this device seamlessly acquires and processes multiple health metrics concurrently. The integration includes heart rate and SpO2 tracking (MAX30102), clinical-grade body temperature monitoring (MAX30205), and fall detection (MPU6050). The report delves into the intricate details of hardware wiring, power regulation architectures (including TP4056, 5V step-up modules, and AMS1117), task logical flows, and the rationale behind specific RTOS configuration parameters.
+This comprehensive report outlines the design, development, and implementation of a real-time, wearable BioPal Health Monitor. Built on the dual-core ESP32 microcontroller and utilizing the FreeRTOS real-time operating system, this device seamlessly acquires and processes multiple health metrics concurrently. The integration includes heart rate and SpO2 tracking (MAX30102), clinical-grade body temperature monitoring (MAX30205), and fall detection (MPU6050). The report delves into the intricate details of hardware wiring, power regulation architectures (including TP4056, 5V step-up modules, and AMS1117), task logical flows, and the rationale behind specific RTOS configuration parameters.
 \end{abstract}
 
 \tableofcontents
 \newpage
 
 \chapter{Introduction}
-The demand for continuous, non-invasive health monitoring in wearable formats has grown exponentially. The Multi-Vital Health Monitor bridges the gap between commercial off-the-shelf medical devices and open-source hobbyist electronics. By leveraging the ESP32's dual-core architecture and FreeRTOS, the device achieves deterministic real-time data acquisition without compromising network throughput or user interface responsiveness. This project places heavy emphasis on robust power management, precise task scheduling, and stable I2C bus arbitration.
+The demand for continuous, non-invasive health monitoring in wearable formats has grown exponentially. The BioPal Health Monitor bridges the gap between commercial off-the-shelf medical devices and open-source hobbyist electronics. By leveraging the ESP32's dual-core architecture and FreeRTOS, the device achieves deterministic real-time data acquisition without compromising network throughput or user interface responsiveness. This project places heavy emphasis on robust power management, precise task scheduling, and stable I2C bus arbitration.
 
 \chapter{Project Context}
 The system operates within a broader ecosystem connecting the end-user (patient) to medical monitoring dashboards.
@@ -48,7 +48,7 @@ The system operates within a broader ecosystem connecting the end-user (patient)
         arrow/.style={thick,->,>=stealth}
     ]
         % Nodes
-        \node[system] (esp32) {\textbf{Multi-Vital}\\\textbf{ESP32 Monitor}};
+        \node[system] (esp32) {\textbf{BioPal}\\\textbf{ESP32 Monitor}};
         \node[actor, left=of esp32] (patient) {Patient};
         \node[external, right=of esp32] (backend) {Backend Server\\(Python Flask)};
         \node[external, above=of backend] (dashboard) {Web Dashboard};
@@ -321,7 +321,7 @@ Comprehensive integration testing revealed that hardware separation of tasks via
 \end{figure}
 
 \chapter{Conclusion}
-The integration of a hardware-regulated power pipeline, strict I2C Mutexes, and prioritized FreeRTOS multitasking enables the Multi-Vital Health Monitor to function with clinical-level reliability. The modular framework simplifies future expansions, such as integrating edge machine learning for advanced arrhythmia detection.
+The integration of a hardware-regulated power pipeline, strict I2C Mutexes, and prioritized FreeRTOS multitasking enables the BioPal Health Monitor to function with clinical-level reliability. The modular framework simplifies future expansions, such as integrating edge machine learning for advanced arrhythmia detection.
 
 \chapter{References}
 \begin{enumerate}
